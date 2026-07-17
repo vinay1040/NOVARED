@@ -59,7 +59,7 @@ function Login() {
         ))}
       </div>
 
-      <LoginForm config={config} />
+      <LoginForm config={config} role={activeTab} />
 
       {config.registerText && (
         <p className="text-sm text-stone-500 mt-5">

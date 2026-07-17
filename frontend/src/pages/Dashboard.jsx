@@ -1,156 +1,331 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, Heart, Building2, User, HeartPulse } from "lucide-react";
+import { HeartPulse, User, Users, Building2, ArrowRight, Droplets, HeartHandshake, IndianRupee } from "lucide-react";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const stats = [
-  { label: "Total Donors", value: "24.8k", icon: Users },
-  { label: "Lives Saved", value: "72.1k", icon: Heart },
-  { label: "Partner Banks", value: "115", icon: Building2 },
+  { label: "Registered Donors", value: "18,420", sub: "↑ 312 this month", icon: HeartPulse, tint: "bg-red/10 text-red-deep" },
+  { label: "Patients Supported", value: "6,187", sub: "↑ 94 this month", icon: User, tint: "bg-amber/15 text-[#8A5A15]" },
+  { label: "Blood Banks Connected", value: "142", sub: "Across 9 districts", icon: Building2, tint: "bg-maroon/10 text-maroon" },
+  { label: "Camps Set Up", value: "368", sub: "↑ 21 this quarter", icon: Users, tint: "bg-green/10 text-green" },
+];
+
+const bloodServices = [
+  {
+    icon: Droplets,
+    title: "Diseases & Blood Types",
+    desc: "What blood-borne illness needs what — and which types are compatible for safe transfusion.",
+    link: "/education",
+  },
+  {
+    icon: HeartHandshake,
+    title: "Post Donation Care",
+    desc: "A simple recovery timeline — what to do in the first hour, the first day, and the first week.",
+    link: "/education",
+  },
+  {
+    icon: IndianRupee,
+    title: "Processing Charges",
+    desc: "Transparent component pricing, so no patient feels overcharged during an emergency.",
+    link: "/education",
+  },
 ];
 
 const urgentRequests = [
-  { id: 1, bloodType: "O-", hospital: "City General Hospital", info: "Emergency Trauma Ward • 2.4 miles away", critical: true },
-  { id: 2, bloodType: "B+", hospital: "St. Jude Medical Center", info: "Scheduled Surgeries • 5.1 miles away", critical: false },
-  { id: 3, bloodType: "AB-", hospital: "North Star Children's", info: "Pediatric Unit • 8.0 miles away", critical: false },
+  { bloodType: "O-", hospital: "MDM Government Hospital", location: "Jodhpur, Rajasthan · Trauma ICU", units: "6 units", time: "22 min ago", level: "critical", chip: "bg-red" },
+  { bloodType: "AB+", hospital: "Rotary Thalassemia Day Care", location: "Jodhpur, Rajasthan · Pediatric Transfusion", units: "4 units", time: "1 hr ago", level: "critical", chip: "bg-red-deep" },
+  { bloodType: "B+", hospital: "AIIMS Jodhpur", location: "Basni · Oncology Ward", units: "3 units", time: "3 hrs ago", level: "high", chip: "bg-maroon" },
+  { bloodType: "A+", hospital: "Goyal Hospital & Research Centre", location: "Ratanada · Surgical Ward", units: "2 units", time: "5 hrs ago", level: "high", chip: "bg-[#8A5A15]" },
+  { bloodType: "O+", hospital: "Mathuradas Mathur Hospital", location: "Jodhpur, Rajasthan · General Ward", units: "2 units", time: "9 hrs ago", level: "moderate", chip: "bg-green" },
 ];
 
-const supplyStatus = [
-  { type: "A+", level: "stable" },
-  { type: "O-", level: "critical" },
-  { type: "B+", level: "stable" },
-  { type: "AB+", level: "moderate" },
-  { type: "B-", level: "low" },
-];
-
-const levelColor = {
-  stable: "text-green-700 border-green-200",
-  moderate: "text-orange-600 border-orange-200",
-  low: "text-orange-600 border-orange-200",
-  critical: "text-red-700 border-red-300",
+const badgeStyles = {
+  critical: "bg-red/10 text-red-deep",
+  high: "bg-amber/15 text-[#8A5A15]",
+  moderate: "bg-green/10 text-green",
 };
+const dotStyles = { critical: "bg-red", high: "bg-amber", moderate: "bg-green" };
+
+// unique blood types found in the request list, used to build filter chips
+const bloodTypes = [...new Set(urgentRequests.map((r) => r.bloodType))];
 
 function Dashboard() {
+  const [activeFilter, setActiveFilter] = useState(null);
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
+
+  const visibleRequests = activeFilter
+    ? urgentRequests.filter((r) => r.bloodType === activeFilter)
+    : urgentRequests;
+
+  const handleDonateClick = () => {
+    if (user) {
+      navigate("/donor-dashboard");
+    } else {
+      navigate("/login?role=donor");
+    }
+  };
+
+  
+
   return (
-    <div className="bg-stone-50 min-h-screen">
+    <div className="min-h-screen bg-cream flex flex-col">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
-        {/* Hero */}
-        <section className="bg-neutral-900 rounded-3xl p-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="max-w-lg">
-            <span className="text-xs font-semibold tracking-wide text-red-400 bg-red-950 px-3 py-1 rounded-full">
-              LIVE NETWORK STATUS
-            </span>
-            <h1 className="text-white text-3xl md:text-4xl font-bold mt-4 leading-tight">
-              Every drop counts towards a life saved.
-            </h1>
-            <p className="text-stone-400 mt-3">
-              Join the BloodNet network today. Whether you're here to give or in need — we connect you fast.
-            </p>
+      {/* TEMPORARY — remove once real login is wired up */}
+      <div className="bg-ink/5 text-center py-2">
+        <button
+          onClick={() => login({ name: "Giriraj Suthar", role: "donor" })}
+          className="text-xs font-bold text-red-deep underline"
+        >
+          TEST LOGIN (dev only)
+        </button>
+      </div>
 
-            {/* Donor / Patient CTA buttons */}
-            <div className="flex flex-wrap gap-3 mt-6">
-              <Link
-                to="/login?role=donor"
-                className="flex items-center gap-2 bg-white text-red-800 font-semibold px-5 py-2.5 rounded-full
-                           transition-all duration-200 hover:scale-[1.04] hover:shadow-lg"
-              >
-                <User size={18} /> I'm a Donor
-              </Link>
-              <Link
-                to="/login?role=patient"
-                className="flex items-center gap-2 bg-red-800 text-white font-semibold px-5 py-2.5 rounded-full
-                           transition-all duration-200 hover:scale-[1.04] hover:shadow-lg hover:bg-red-700"
-              >
-                <HeartPulse size={18} /> I'm a Patient
-              </Link>
-            </div>
-          </div>
+      <main className="flex-1">
+        {/* HERO — dark solid card */}
+        <div className="px-8 pt-11">
+          <div className="max-w-6xl mx-auto rounded-[28px] overflow-hidden text-white bg-ink
+                          shadow-[0_30px_70px_-30px_rgba(0,0,0,0.5)]
+                          grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="p-10 md:p-14 flex flex-col gap-5">
+              <span className="inline-flex items-center gap-2 w-fit px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold tracking-wide uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#4CE59A] animate-pulse" />
+                214 units needed across Jodhpur right now
+              </span>
 
-          <div className="bg-neutral-800 rounded-2xl p-6 w-full md:w-64">
-            <p className="text-white text-3xl font-bold">1,402</p>
-            <p className="text-stone-400 text-xs uppercase tracking-wide mt-1">
-              Units needed today
-            </p>
-            <div className="w-full bg-neutral-700 h-1.5 rounded-full mt-4">
-              <div className="bg-red-600 h-1.5 rounded-full" style={{ width: "65%" }} />
-            </div>
-            <p className="text-stone-400 text-xs mt-2">65% of daily target reached</p>
-          </div>
-        </section>
+              <p className="font-serif italic text-xl md:text-2xl leading-snug max-w-lg text-white/95">
+                "Blood donation costs nothing but a little time — and buys someone their next sunrise."
+              </p>
 
-        {/* Stat cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-          {stats.map(({ label, value, icon: Icon }) => (
-            <div
-              key={label}
-              className="bg-white rounded-2xl p-6 flex items-center justify-between border border-stone-200
-                         transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:border-red-200 cursor-pointer"
-            >
-              <div>
-                <p className="text-xs uppercase text-stone-500 tracking-wide">{label}</p>
-                <p className="text-2xl font-bold text-stone-900 mt-1">{value}</p>
-              </div>
-              <div className="bg-red-50 p-3 rounded-xl">
-                <Icon className="text-red-800" size={22} />
-              </div>
-            </div>
-          ))}
-        </section>
+              <p className="text-sm md:text-[15px] leading-relaxed text-white/70 max-w-lg">
+                BLOOD NET connects verified donors, patients in need, and licensed blood banks on a single
+                live network — so an urgent request is never stuck in a phone tree at 2 a.m.
+              </p>
 
-        {/* Urgent Requests + Supply Inventory */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="md:col-span-2">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-bold text-stone-900">Urgent Requests</h2>
-              <a href="#" className="text-sm text-red-800 font-medium hover:underline">View All</a>
-            </div>
-            <div className="space-y-3">
-              {urgentRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="bg-white rounded-2xl p-4 flex items-center justify-between border border-stone-200
-                             transition-all duration-200 hover:shadow-md hover:border-red-200"
+              <div className="flex flex-wrap gap-3 mt-2">
+                <button
+                  onClick={handleDonateClick}
+                  className="flex items-center gap-2 bg-white text-red-deep font-bold px-6 py-3.5 rounded-full
+                             transition-all hover:bg-red-50 hover:-translate-y-0.5"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm border ${req.critical ? "bg-red-50 text-red-800 border-red-200" : "bg-stone-50 text-stone-700 border-stone-200"}`}>
-                      {req.bloodType}
-                    </div>
+                  <User size={17} /> Donate Blood
+                </button>
+                <Link
+                  to="/login?role=patient"
+                  className="flex items-center gap-2 border border-white/30 text-white font-bold px-6 py-3.5 rounded-full
+                             transition-all hover:border-white hover:bg-white/10"
+                >
+                  <HeartPulse size={17} /> Request Blood
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative min-h-[260px] md:min-h-[420px] p-6 md:p-8 flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(184,31,58,0.25),_transparent_55%),radial-gradient(circle_at_bottom_right,_rgba(226,154,60,0.2),_transparent_45%)]">
+              <div className="w-full max-w-[360px] rounded-[24px] border border-white/15 bg-white/10 backdrop-blur-md p-6 shadow-[0_20px_60px_-25px_rgba(0,0,0,0.55)]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-white/60">Live Need</p>
+                    <p className="text-3xl font-semibold mt-1">214</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full border border-white/20 bg-white/10 flex items-center justify-center">
+                    <HeartPulse size={20} className="text-white" />
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/10 px-3.5 py-3">
                     <div>
-                      <p className="font-semibold text-stone-900">{req.hospital}</p>
-                      <p className="text-xs text-stone-500">{req.info}</p>
-                      {req.critical && (
-                        <span className="text-xs text-red-700 font-semibold">CRITICAL SUPPLY</span>
-                      )}
+                      <p className="text-sm font-semibold">Critical requests</p>
+                      <p className="text-xs text-white/65">24 hospitals waiting</p>
+                    </div>
+                    <span className="rounded-full bg-red/20 px-2.5 py-1 text-[11px] font-bold text-white">24</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/10 px-3.5 py-3">
+                    <div>
+                      <p className="text-sm font-semibold">Nearby donors</p>
+                      <p className="text-xs text-white/65">18 available within 5 km</p>
+                    </div>
+                    <span className="rounded-full bg-amber/25 px-2.5 py-1 text-[11px] font-bold text-white">18</span>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-[#FBF6F1] p-4 text-ink">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-red-deep">Today</p>
+                      <p className="text-sm font-semibold mt-1">O- blood type is in demand</p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red/10 text-red-deep">
+                      <Droplets size={18} />
                     </div>
                   </div>
-                  <button className="bg-red-800 text-white text-sm font-semibold px-4 py-2 rounded-full
-                                     transition-all duration-200 hover:bg-red-900 hover:scale-105">
-                    Respond
-                  </button>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
+        </div>
 
+        {/* INFO CARDS */}
+        <div className="max-w-6xl mx-auto px-8 mt-7 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link to="/about" className="group bg-paper border border-ink/10 rounded-[22px] p-8 flex flex-col gap-3.5
+                                       transition-all hover:-translate-y-1 hover:shadow-[0_20px_50px_-20px_rgba(74,18,32,0.25)]">
+            <span className="w-fit text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-red/10 text-red-deep">Our Story</span>
+            <h3 className="font-serif text-2xl font-semibold">About BLOOD NET</h3>
+            <p className="text-sm text-ink-soft leading-relaxed">
+              What started as a spreadsheet tracking donors for one hospital in Jodhpur is now a live network
+              linking patients, verified donors and licensed blood banks.
+            </p>
+            <span className="flex items-center gap-1.5 text-sm font-bold text-red-deep mt-auto">
+              Read about BLOOD NET <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </span>
+          </Link>
+
+          <Link to="/education" className="group bg-paper border border-ink/10 rounded-[22px] p-8 flex flex-col gap-3.5
+                                           transition-all hover:-translate-y-1 hover:shadow-[0_20px_50px_-20px_rgba(74,18,32,0.25)]">
+            <span className="w-fit text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-amber/15 text-[#8A5A15]">Blood-Borne Risk</span>
+            <h3 className="font-serif text-2xl font-semibold">HIV / AIDS</h3>
+            <p className="text-sm text-ink-soft leading-relaxed">
+              The most consequential disease transmissible through unscreened blood — and why every unit on
+              BLOOD NET's partner banks is triple-screened first.
+            </p>
+            <span className="flex items-center gap-1.5 text-sm font-bold text-red-deep mt-auto">
+              Read about HIV/AIDS <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </span>
+          </Link>
+        </div>
+
+        {/* BLOOD SERVICES */}
+        <div className="max-w-6xl mx-auto px-8 mt-16 mb-6">
+          <span className="block text-xs font-bold uppercase tracking-wide text-red-deep mb-2">Learn More</span>
+          <h2 className="font-serif text-3xl font-semibold">Blood Services</h2>
+        </div>
+        <div className="max-w-6xl mx-auto px-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {bloodServices.map(({ icon: Icon, title, desc, link }) => (
+            <Link
+              key={title}
+              to={link}
+              className="group bg-paper border border-ink/10 rounded-[20px] p-7 flex flex-col gap-3 transition-all
+                         hover:-translate-y-1 hover:shadow-[0_20px_50px_-20px_rgba(74,18,32,0.25)]"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-red/10 text-red-deep">
+                <Icon size={20} />
+              </div>
+              <h4 className="font-serif text-lg font-semibold">{title}</h4>
+              <p className="text-sm text-ink-soft leading-relaxed">{desc}</p>
+              <span className="flex items-center gap-1.5 text-sm font-bold text-red-deep mt-auto">
+                Learn more <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* STATS */}
+        <div className="max-w-6xl mx-auto px-8 mt-16 mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-stone-900 mb-3">Supply Inventory Status</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {supplyStatus.map(({ type, level }) => (
-                <div
-                  key={type}
-                  className={`bg-white rounded-xl p-3 text-center border transition-all duration-200 hover:scale-105 hover:shadow-md ${levelColor[level]}`}
-                >
-                  <p className="font-bold text-stone-900">{type}</p>
-                  <p className={`text-[10px] uppercase font-semibold mt-1 ${levelColor[level].split(" ")[0]}`}>
-                    {level}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <span className="block text-xs font-bold uppercase tracking-wide text-red-deep mb-2">Network, Live</span>
+            <h2 className="font-serif text-3xl font-semibold">The network at a glance</h2>
           </div>
-        </section>
+          <p className="text-sm text-ink-soft max-w-sm">
+            Numbers pulled from every patient, donor and blood bank account connected to BLOOD NET.
+          </p>
+        </div>
+        <div className="max-w-6xl mx-auto px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {stats.map(({ label, value, sub, icon: Icon, tint }) => (
+            <div
+              key={label}
+              className="bg-paper border border-ink/10 rounded-[20px] p-7 transition-all
+                         hover:-translate-y-1 hover:shadow-[0_20px_50px_-20px_rgba(74,18,32,0.25)]"
+            >
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${tint}`}>
+                <Icon size={22} />
+              </div>
+              <p className="font-mono text-[34px] font-bold tracking-tight">{value}</p>
+              <p className="text-[13.5px] font-semibold text-ink-soft mt-1">{label}</p>
+              <p className="text-xs font-bold text-green mt-2.5">{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* URGENT REQUESTS */}
+        <div className="max-w-6xl mx-auto px-8 mt-16 mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="block text-xs font-bold uppercase tracking-wide text-red-deep mb-2">Real-Time Requests</span>
+            <h2 className="font-serif text-3xl font-semibold">Current blood needs</h2>
+          </div>
+          <p className="text-sm text-ink-soft max-w-sm">
+            Sorted by urgency — critical requests surface first so nearby donors can respond immediately.
+          </p>
+        </div>
+
+        {/* FILTER CHIPS */}
+        <div className="max-w-6xl mx-auto px-8 mb-6 flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveFilter(null)}
+            className={`px-4 py-2 rounded-full text-xs font-bold border transition-all ${
+              activeFilter === null
+                ? "bg-ink text-white border-ink"
+                : "border-ink/15 text-ink-soft hover:border-ink/30"
+            }`}
+          >
+            All Types
+          </button>
+          {bloodTypes.map((bt) => (
+            <button
+              key={bt}
+              onClick={() => setActiveFilter(activeFilter === bt ? null : bt)}
+              className={`px-4 py-2 rounded-full text-xs font-bold border transition-all font-mono ${
+                activeFilter === bt
+                  ? "bg-red-deep text-white border-red-deep"
+                  : "border-ink/15 text-ink-soft hover:border-red/40"
+              }`}
+            >
+              {bt}
+            </button>
+          ))}
+        </div>
+
+        <div className="max-w-6xl mx-auto px-8 pb-16 flex flex-col gap-3.5">
+          {visibleRequests.length === 0 && (
+            <div className="bg-paper border border-ink/10 rounded-[18px] p-8 text-center text-sm text-ink-soft">
+              No active requests for {activeFilter} right now.
+            </div>
+          )}
+
+          {visibleRequests.map((req, i) => (
+            <div
+              key={i}
+              className="bg-paper border border-ink/10 rounded-[18px] p-5 grid grid-cols-1 md:grid-cols-[64px_1.4fr_1fr_1fr_120px]
+                         items-center gap-4 transition-all hover:translate-x-1 hover:shadow-[0_20px_50px_-20px_rgba(74,18,32,0.25)]"
+            >
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-mono font-bold text-white ${req.chip}`}>
+                {req.bloodType}
+              </div>
+              <div>
+                <p className="font-bold text-[15px]">{req.hospital}</p>
+                <p className="text-xs text-ink-soft mt-0.5">{req.location}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">Units needed</p>
+                <p className="text-sm font-semibold mt-0.5">{req.units}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">Requested</p>
+                <p className="text-sm font-semibold mt-0.5">{req.time}</p>
+              </div>
+              <span className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold ${badgeStyles[req.level]}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${dotStyles[req.level]}`} />
+                {req.level[0].toUpperCase() + req.level.slice(1)}
+              </span>
+            </div>
+          ))}
+        </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

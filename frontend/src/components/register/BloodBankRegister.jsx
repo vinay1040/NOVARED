@@ -1,10 +1,12 @@
 import { useState } from "react";
 import axios from "axios";
 import StepProgress from "./StepProgress";
+import { useNavigate } from "react-router-dom";
 
-const labels = ["Facility Info", "License & Address"];
+const labels = ["Facility Info", "License & Address", "Verify Phone"];
 
 function BloodBankRegister() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -14,9 +16,46 @@ function BloodBankRegister() {
   });
   const [licenseFile, setLicenseFile] = useState(null);
 
+  const [otpSent, setOtpSent] = useState(false);
+  const [mockOtp, setMockOtp] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
+
   const update = (field, value) => setFormData((p) => ({ ...p, [field]: value }));
-  const next = () => setStep((s) => Math.min(s + 1, 2));
+
+  const isStep1Valid = () => {
+    if (!formData.facilityName || !formData.licenseId || !formData.email || !formData.phone) return false;
+    if (formData.password.length < 6) return false;
+    if (formData.password !== formData.confirmPassword) return false;
+    return true;
+  };
+  const isStep2Valid = () => formData.city && formData.address;
+
+  const canGoNext = () => {
+    if (step === 1) return isStep1Valid();
+    if (step === 2) return isStep2Valid();
+    return true;
+  };
+
+  const next = () => {
+    if (!canGoNext()) {
+      alert("Please fill in all required fields before continuing.");
+      return;
+    }
+    setStep((s) => Math.min(s + 1, 3));
+  };
   const back = () => setStep((s) => Math.max(s - 1, 1));
+
+  const sendOtp = () => {
+    const generated = Math.floor(1000 + Math.random() * 9000).toString();
+    setMockOtp(generated);
+    setOtpSent(true);
+    alert("Demo OTP sent: " + generated);
+  };
+  const verifyOtp = () => {
+    if (otpInput === mockOtp) setOtpVerified(true);
+    else alert("Incorrect OTP. Please try again.");
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -44,6 +83,12 @@ function BloodBankRegister() {
 
   const inputClass = "w-full mt-1 px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-neutral-400";
   const labelClass = "text-sm font-medium text-stone-700 block";
+  const nextBtnClass = (valid, wide = "w-full") =>
+    `${wide} mt-4 font-semibold py-3 rounded-full transition-all ${
+      valid
+        ? "bg-neutral-900 text-white hover:bg-neutral-800 hover:shadow-lg hover:scale-[1.02]"
+        : "bg-stone-300 text-stone-500 cursor-not-allowed"
+    }`;
 
   if (submitted) {
     return (
@@ -52,13 +97,19 @@ function BloodBankRegister() {
         <p className="text-sm text-stone-500 mt-2">
           Your facility is under review. Our team will verify your license document and approve your account within 24-48 hours. You'll be notified by email.
         </p>
+        <button
+          onClick={() => navigate("/login?role=bloodbank")}
+          className="mt-5 bg-neutral-900 text-white font-semibold px-6 py-3 rounded-full hover:bg-neutral-800 transition"
+        >
+          Go to Login
+        </button>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-2xl p-8 border border-stone-200 w-full max-w-lg">
-      <StepProgress step={step} totalSteps={2} labels={labels} />
+      <StepProgress step={step} totalSteps={3} labels={labels} />
 
       {step === 1 && (
         <div className="space-y-4">
@@ -88,9 +139,10 @@ function BloodBankRegister() {
               <input type="password" className={inputClass} value={formData.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} />
             </div>
           </div>
-          <button onClick={next} className="w-full mt-4 bg-neutral-900 text-white font-semibold py-3 rounded-full hover:bg-neutral-800 hover:shadow-lg transition-all hover:scale-[1.02]">
-            Next Step →
-          </button>
+          {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+            <p className="text-xs text-red-600">Passwords do not match.</p>
+          )}
+          <button onClick={next} className={nextBtnClass(isStep1Valid())}>Next Step →</button>
         </div>
       )}
 
@@ -115,13 +167,48 @@ function BloodBankRegister() {
             <p className="text-xs text-stone-500 mt-1">Required for manual verification before your account is approved.</p>
           </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">
-              Back
-            </button>
+            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">Back</button>
+            <button onClick={next} className={nextBtnClass(isStep2Valid(), "w-2/3")}>Next Step →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-4">
+          <p className="text-sm text-stone-600">
+            We need to verify your phone number <strong>{formData.phone}</strong> before submitting your application.
+          </p>
+
+          <button onClick={sendOtp} className="w-full border border-neutral-900 text-neutral-900 font-semibold py-2.5 rounded-full hover:bg-neutral-100 transition">
+            {otpSent ? "Resend OTP" : "Send OTP"}
+          </button>
+
+          <div>
+            <label className={labelClass}>Enter OTP</label>
+            <input
+              className={inputClass}
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              placeholder="4-digit code"
+              maxLength={4}
+              disabled={otpVerified}
+            />
+          </div>
+
+          <button
+            onClick={verifyOtp}
+            disabled={!otpSent || otpVerified}
+            className="w-full bg-neutral-900 text-white font-semibold py-3 rounded-full hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {otpVerified ? "✓ Verified" : "Verify OTP"}
+          </button>
+
+          <div className="flex gap-3 mt-4">
+            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">Back</button>
             <button
               onClick={handleSubmit}
-              disabled={submitting}
-              className="w-2/3 bg-neutral-900 text-white font-semibold py-3 rounded-full hover:bg-neutral-800 hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50"
+              disabled={!otpVerified || submitting}
+              className="w-2/3 bg-neutral-900 text-white font-semibold py-3 rounded-full hover:bg-neutral-800 hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
               {submitting ? "Submitting..." : "Submit for Verification"}
             </button>

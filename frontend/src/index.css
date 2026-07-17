@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@theme {
+  --color-cream: #FBF6F1;
+  --color-paper: #FFFFFF;
+  --color-ink: #1D1512;
+  --color-ink-soft: #5C4F49;
+  --color-red: #B81F3A;
+  --color-red-deep: #7A1029;
+  --color-maroon: #4A1220;
+  --color-amber: #E29A3C;
+  --color-green: #2E6E52;
+
+  --font-serif: 'Fraunces', serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Space Grotesk', sans-serif;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

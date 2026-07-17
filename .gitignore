@@ -2,7 +2,13 @@
 node_modules/
 frontend/node_modules/
 Backend/venv/
+# Ignore local database
+Backend/instance/bloodnet.db
 
+# Ignore compiled frontend assets
+frontend/dist/
+node_modules/
+.env
 
 __pycache__/
 *.pyc

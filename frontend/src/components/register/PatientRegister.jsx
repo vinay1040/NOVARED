@@ -1,29 +1,76 @@
 import { useState } from "react";
 import axios from "axios";
 import StepProgress from "./StepProgress";
+import { useNavigate } from "react-router-dom";
 
-const labels = ["Basic Profile", "Medical Details", "Verification Proof"];
+const labels = ["Basic Profile", "Medical Details", "Verification Proof", "Verify Phone"];
 
 function PatientRegister() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: "", email: "", phone: "", password: "", confirmPassword: "",
+    firstName: "", lastName: "", email: "", phone: "", password: "", confirmPassword: "",
     gender: "", dob: "",
     bloodGroupNeeded: "", hospitalName: "", city: "", conditionDescription: "", urgencyLevel: "Moderate",
     relationToPatient: "self", additionalNotes: "", agreeTerms: false,
   });
   const [doctorNoteFile, setDoctorNoteFile] = useState(null);
 
+  const [otpSent, setOtpSent] = useState(false);
+  const [mockOtp, setMockOtp] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
+
   const update = (field, value) => setFormData((p) => ({ ...p, [field]: value }));
-  const next = () => setStep((s) => Math.min(s + 1, 3));
+
+  const isStep1Valid = () => {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) return false;
+    if (formData.password.length < 6) return false;
+    if (formData.password !== formData.confirmPassword) return false;
+    if (!formData.gender || !formData.dob) return false;
+    return true;
+  };
+  const isStep2Valid = () => {
+    if (!formData.bloodGroupNeeded || !formData.hospitalName || !formData.city) return false;
+    if (!formData.conditionDescription) return false;
+    return true;
+  };
+  const isStep3Valid = () => formData.agreeTerms;
+
+  const canGoNext = () => {
+    if (step === 1) return isStep1Valid();
+    if (step === 2) return isStep2Valid();
+    if (step === 3) return isStep3Valid();
+    return true;
+  };
+
+  const next = () => {
+    if (!canGoNext()) {
+      alert("Please fill in all required fields before continuing.");
+      return;
+    }
+    setStep((s) => Math.min(s + 1, 4));
+  };
   const back = () => setStep((s) => Math.max(s - 1, 1));
+
+  const sendOtp = () => {
+    const generated = Math.floor(1000 + Math.random() * 9000).toString();
+    setMockOtp(generated);
+    setOtpSent(true);
+    alert("Demo OTP sent: " + generated);
+  };
+  const verifyOtp = () => {
+    if (otpInput === mockOtp) setOtpVerified(true);
+    else alert("Incorrect OTP. Please try again.");
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const payload = new FormData();
-      payload.append("full_name", formData.fullName);
+      payload.append("first_name", formData.firstName);
+      payload.append("last_name", formData.lastName);
       payload.append("email", formData.email);
       payload.append("phone", formData.phone);
       payload.append("password", formData.password);
@@ -41,7 +88,8 @@ function PatientRegister() {
       await axios.post("http://127.0.0.1:5000/api/auth/register/patient", payload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Patient registered successfully! Please login.");
+      alert("Patient registered successfully! Please log in.");
+      navigate("/login?role=patient");
     } catch (err) {
       alert("Registration failed: " + (err.response?.data?.message || err.message));
     } finally {
@@ -51,16 +99,28 @@ function PatientRegister() {
 
   const inputClass = "w-full mt-1 px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-rose-300";
   const labelClass = "text-sm font-medium text-stone-700 block";
+  const nextBtnClass = (valid, wide = "w-full") =>
+    `${wide} mt-4 font-semibold py-3 rounded-full transition-all ${
+      valid
+        ? "bg-rose-700 text-white hover:bg-rose-800 hover:shadow-lg hover:scale-[1.02]"
+        : "bg-stone-300 text-stone-500 cursor-not-allowed"
+    }`;
 
   return (
     <div className="bg-white rounded-2xl p-8 border border-stone-200 w-full max-w-lg">
-      <StepProgress step={step} totalSteps={3} labels={labels} />
+      <StepProgress step={step} totalSteps={4} labels={labels} />
 
       {step === 1 && (
         <div className="space-y-4">
-          <div>
-            <label className={labelClass}>Full Name</label>
-            <input className={inputClass} value={formData.fullName} onChange={(e) => update("fullName", e.target.value)} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>First Name</label>
+              <input className={inputClass} value={formData.firstName} onChange={(e) => update("firstName", e.target.value)} />
+            </div>
+            <div>
+              <label className={labelClass}>Last Name</label>
+              <input className={inputClass} value={formData.lastName} onChange={(e) => update("lastName", e.target.value)} />
+            </div>
           </div>
           <div>
             <label className={labelClass}>Email Address</label>
@@ -80,6 +140,9 @@ function PatientRegister() {
               <input type="password" className={inputClass} value={formData.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} />
             </div>
           </div>
+          {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+            <p className="text-xs text-red-600">Passwords do not match.</p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Gender</label>
@@ -95,9 +158,7 @@ function PatientRegister() {
               <input type="date" className={inputClass} value={formData.dob} onChange={(e) => update("dob", e.target.value)} />
             </div>
           </div>
-          <button onClick={next} className="w-full mt-4 bg-rose-700 text-white font-semibold py-3 rounded-full hover:bg-rose-800 hover:shadow-lg transition-all hover:scale-[1.02]">
-            Next Step →
-          </button>
+          <button onClick={next} className={nextBtnClass(isStep1Valid())}>Next Step →</button>
         </div>
       )}
 
@@ -141,12 +202,8 @@ function PatientRegister() {
             </select>
           </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">
-              Back
-            </button>
-            <button onClick={next} className="w-2/3 bg-rose-700 text-white font-semibold py-3 rounded-full hover:bg-rose-800 hover:shadow-lg transition-all hover:scale-[1.02]">
-              Next Step →
-            </button>
+            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">Back</button>
+            <button onClick={next} className={nextBtnClass(isStep2Valid(), "w-2/3")}>Next Step →</button>
           </div>
         </div>
       )}
@@ -180,13 +237,48 @@ function PatientRegister() {
             I confirm this information is accurate and the medical proof provided is genuine.
           </label>
           <div className="flex gap-3 mt-4">
-            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">
-              Back
-            </button>
+            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">Back</button>
+            <button onClick={next} className={nextBtnClass(isStep3Valid(), "w-2/3")}>Next Step →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-4">
+          <p className="text-sm text-stone-600">
+            We need to verify your phone number <strong>{formData.phone}</strong> before creating your account.
+          </p>
+
+          <button onClick={sendOtp} className="w-full border border-rose-700 text-rose-700 font-semibold py-2.5 rounded-full hover:bg-rose-50 transition">
+            {otpSent ? "Resend OTP" : "Send OTP"}
+          </button>
+
+          <div>
+            <label className={labelClass}>Enter OTP</label>
+            <input
+              className={inputClass}
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              placeholder="4-digit code"
+              maxLength={4}
+              disabled={otpVerified}
+            />
+          </div>
+
+          <button
+            onClick={verifyOtp}
+            disabled={!otpSent || otpVerified}
+            className="w-full bg-rose-700 text-white font-semibold py-3 rounded-full hover:bg-rose-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {otpVerified ? "✓ Verified" : "Verify OTP"}
+          </button>
+
+          <div className="flex gap-3 mt-4">
+            <button onClick={back} className="w-1/3 border border-stone-300 text-stone-700 font-semibold py-3 rounded-full hover:bg-stone-50 transition">Back</button>
             <button
               onClick={handleSubmit}
-              disabled={!formData.agreeTerms || submitting}
-              className="w-2/3 bg-rose-700 text-white font-semibold py-3 rounded-full hover:bg-rose-800 hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+              disabled={!otpVerified || submitting}
+              className="w-2/3 bg-rose-700 text-white font-semibold py-3 rounded-full hover:bg-rose-800 hover:shadow-lg transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
               {submitting ? "Submitting..." : "Complete Registration"}
             </button>
